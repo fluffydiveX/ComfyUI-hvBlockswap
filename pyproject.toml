@@ -1,0 +1,14 @@
+[project]
+name = "hvblockswap"
+description = "It is a simple HunyuanVideo block swap node for ComfyUI native nodes."
+version = "1.0.0"
+license = {file = "LICENSE"}
+
+[project.urls]
+Repository = "https://github.com/fluffydiveX/ComfyUI-hvBlockswap"
+#  Used by Comfy Registry https://comfyregistry.org
+
+[tool.comfy]
+PublisherId = ""
+DisplayName = "ComfyUI-hvBlockswap"
+Icon = ""
