@@ -2,7 +2,7 @@ import comfy.model_management
 import gc
 from comfy.patcher_extension import CallbacksMP
 from comfy.model_patcher import ModelPatcher
-from comfy.model_base import HunyuanVideo
+from comfy.model_base import HunyuanVideo, WAN21
 
 #Based on https://github.com/kijai/ComfyUI-HunyuanVideoWrapper
 class HunyuanVideoBlockSwap:
@@ -48,10 +48,50 @@ class HunyuanVideoBlockSwap:
 
         return (model, )
 
+class WanVideoBlockSwap:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "model": ("MODEL",),
+                "blocks_to_swap": ("INT", {"default": 40, "min": 0, "max": 40, "step": 1, "tooltip": "Number of blocks to swap"}),
+                "offload_txt_emb": ("BOOLEAN", {"default": False, "tooltip": "Offload text_embedding layer"}),
+                "offload_img_emb": ("BOOLEAN", {"default": False, "tooltip": "Offload img_emb layer"}),
+            },
+        }
+    RETURN_TYPES = ("MODEL",)
+    CATEGORY = "ComfyUI-hvBlockswap"
+    FUNCTION = "set_callback"
+
+    def set_callback(self, model: ModelPatcher, blocks_to_swap, offload_txt_emb, offload_img_emb):
+        
+        def swap_blocks(model: ModelPatcher, device_to, lowvram_model_memory, force_patch_weights, full_load):
+            base_model = model.model
+            if isinstance(base_model, WAN21):
+                unet = base_model.diffusion_model
+                for b, block in enumerate(unet.blocks):
+                    if b < blocks_to_swap:
+                        block.to(model.offload_device)
+
+                if offload_txt_emb:
+                    unet.text_embedding.to(model.offload_device)
+                if offload_img_emb:
+                    unet.img_emb.to(model.offload_device)
+
+            comfy.model_management.soft_empty_cache()
+            gc.collect()
+        
+        model = model.clone()
+        model.add_callback(CallbacksMP.ON_LOAD,swap_blocks)
+
+        return (model, )
+    
 NODE_CLASS_MAPPINGS = {
-    "hvBlockSwap": HunyuanVideoBlockSwap
+    "hvBlockSwap": HunyuanVideoBlockSwap,
+    "WanBlockSwap": WanVideoBlockSwap
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "hvBlockSwap": "HunyuanVideoBlockSwap"
+    "hvBlockSwap": "HunyuanVideoBlockSwap",
+    "WanBlockSwap": "WanVideoBlockSwap"
 }
